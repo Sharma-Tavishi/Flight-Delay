@@ -1,0 +1,19 @@
+# data and models — download separately, not included in repo
+Data/
+models/
+data_new/
+data_new 2/
+*.zip
+*.joblib
+
+# env and secrets
+.env
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# word temp files
+~$*.docx
