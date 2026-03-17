@@ -20,7 +20,12 @@ An end-to-end machine learning system that predicts US domestic flight delays an
 │   ├── insights.py      # airline stats + route map
 │   └── about.py         # project info
 ├── utils/nav.py         # shared nav bar
-├── notebooks/           # data processing + model training
+├── notebooks/
+│   ├── DataPreprocess.ipynb       # cleans BTS flight data, merges weather, exports parquet
+│   ├── ModelComparison.ipynb      # trains and compares Logistic Regression, Random Forest, LightGBM
+│   ├── TrainOnColab.ipynb         # full training pipeline optimized for Google Colab
+│   ├── LLM_integration.ipynb      # experiments with Claude API for NL parsing
+│   └── generate_poster_charts.py  # generates charts used in the thesis poster
 ├── assets/              # charts and diagrams
 └── docs/                # user testing guide, project overview
 ```
