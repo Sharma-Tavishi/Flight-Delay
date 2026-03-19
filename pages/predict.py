@@ -431,7 +431,7 @@ with tab_chat:
                         dest     = parsed["dest"].upper()
                         carrier  = parsed["carrier"].upper()
                         dep_hour = int(parsed["dep_hour"])
-                        arr_hour = (dep_hour + 2) % 24
+                        arr_hour = int((dep_hour + max(1, round(distance / 500))) % 24)
 
                         raw_date = parsed.get("flight_date")
                         try:
