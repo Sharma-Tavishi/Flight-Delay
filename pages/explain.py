@@ -18,8 +18,8 @@ render_nav("pages/explain.py")
 
 @st.cache_resource
 def load_artifacts():
-    clf        = joblib.load("models/rf_classifier_sample.joblib")
-    reg        = joblib.load("models/rf_regressor_sample.joblib")
+    clf        = joblib.load("models/lgbm_classifier.joblib")
+    reg        = joblib.load("models/lgbm_regressor.joblib")
     enc        = joblib.load("models/ordinal_encoder.joblib")
     top_orig   = joblib.load("models/top_orig.joblib")
     top_dest   = joblib.load("models/top_dest.joblib")
