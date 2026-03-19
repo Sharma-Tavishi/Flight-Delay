@@ -11,8 +11,19 @@ def render_nav(current: str):
     st.markdown("""
     <style>
       [data-testid="collapsedControl"]  { display: none !important; }
-      section[data-testid="stSidebar"] { display: none !important; }
-      .block-container { padding-top: 1.2rem !important; }
+      section[data-testid="stSidebar"]  { display: none !important; }
+      header[data-testid="stHeader"]    { display: none !important; }
+      [data-testid="stDecoration"]      { display: none !important; }
+      .block-container { padding-top: 0.5rem !important; }
+
+      section[data-testid="stMain"] div.block-container
+        > div[data-testid="stVerticalBlock"]:first-child {
+        position: sticky;
+        top: 0;
+        z-index: 999;
+        background: #0e1117;
+        padding-top: 0.6rem;
+      }
 
       [data-testid="stMarkdownContainer"]:has(.nav-brand) + [data-testid="stPageLink"] a,
       [data-testid="stMarkdownContainer"]:has(.nav-brand) + [data-testid="stPageLink"] a * {

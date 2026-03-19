@@ -421,7 +421,6 @@ with tab_chat:
                         dest     = parsed["dest"].upper()
                         carrier  = parsed["carrier"].upper()
                         dep_hour = int(parsed["dep_hour"])
-                        arr_hour = int((dep_hour + max(1, round(distance / 500))) % 24)
 
                         raw_date = parsed.get("flight_date")
                         try:
@@ -433,6 +432,7 @@ with tab_chat:
                         month     = dt.month
                         dayofweek = dt.isoweekday()
                         distance  = float(parsed.get("distance") or haversine_miles(origin, dest))
+                        arr_hour  = int((dep_hour + max(1, round(distance / 500))) % 24)
 
                         _info = {"origin": origin, "dest": dest, "carrier": carrier,
                                  "dep_hour": dep_hour, "flight_date": flight_date}
@@ -447,7 +447,7 @@ with tab_chat:
                 except anthropic.RateLimitError:
                     _err = "Too many requests. Please wait a moment and try again."
                 except Exception as e:
-                    _err = "Something went wrong. Please try again."
+                    _err = str(e)
 
             if _warn:
                 st.error(_warn)
@@ -547,10 +547,11 @@ with tab_manual:
                              "This model is trained on US domestic flights only.")
                 else:
                     dt_f       = datetime.strptime(date_f, "%Y-%m-%d")
-                    arr_hour_f = (dep_hour_f + 2) % 24
+                    distance_f = haversine_miles(origin_f, dest_f)
+                    arr_hour_f = int((dep_hour_f + max(1, round(distance_f / 500))) % 24)
                     _mres = predict(origin_f, dest_f, carrier_f, dep_hour_f, arr_hour_f,
                                     dt_f.month, dt_f.isoweekday(),
-                                    haversine_miles(origin_f, dest_f), date_f)
+                                    distance_f, date_f)
                     if API_KEY:
                         user_q_m = f"{airline_label(carrier_f)} flight from {origin_f} to {dest_f} at {dep_hour_f}:00 on {date_f}"
                         _mresp = generate_response_with_claude(
