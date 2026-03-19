@@ -13,18 +13,19 @@ warnings.filterwarnings("ignore")
 
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils.nav import render_nav
+from utils.constants import AIRLINE_NAMES, MODEL_PATHS
 render_nav("pages/explain.py")
 
 
 @st.cache_resource
 def load_artifacts():
-    clf        = joblib.load("models/lgbm_classifier.joblib")
-    reg        = joblib.load("models/lgbm_regressor.joblib")
-    enc        = joblib.load("models/ordinal_encoder.joblib")
-    top_orig   = joblib.load("models/top_orig.joblib")
-    top_dest   = joblib.load("models/top_dest.joblib")
-    route_data = joblib.load("models/route_avg_delay.joblib")
-    pre_info   = joblib.load("models/preprocessor_sample.joblib")
+    clf        = joblib.load(MODEL_PATHS["classifier"])
+    reg        = joblib.load(MODEL_PATHS["regressor"])
+    enc        = joblib.load(MODEL_PATHS["encoder"])
+    top_orig   = joblib.load(MODEL_PATHS["top_orig"])
+    top_dest   = joblib.load(MODEL_PATHS["top_dest"])
+    route_data = joblib.load(MODEL_PATHS["route_data"])
+    pre_info   = joblib.load(MODEL_PATHS["preprocessor"])
     return clf, reg, enc, top_orig, top_dest, route_data, pre_info
 
 clf, reg, enc, top_orig, top_dest, route_data, pre_info = load_artifacts()
@@ -168,20 +169,13 @@ with tab_local:
     st.markdown("Enter a flight below to see which factors drove the prediction.")
 
     col1, col2, col3 = st.columns(3)
-    AIRLINE_NAMES_E = {
-        "AA": "American", "DL": "Delta",     "WN": "Southwest", "UA": "United",
-        "AS": "Alaska",   "B6": "JetBlue",   "NK": "Spirit",    "F9": "Frontier",
-        "HA": "Hawaiian", "G4": "Allegiant", "OO": "SkyWest",   "9E": "Endeavor",
-        "MQ": "Envoy",    "YX": "Republic",  "OH": "PSA",       "QX": "Horizon",
-        "YV": "Mesa",
-    }
     with col1:
         origin_e  = st.text_input("Origin",      value="ORD", max_chars=3).upper()
         dest_e    = st.text_input("Destination",  value="JFK", max_chars=3).upper()
         carrier_e = st.selectbox(
             "Airline",
-            options=sorted(AIRLINE_NAMES_E.keys()),
-            format_func=lambda x: f"{AIRLINE_NAMES_E.get(x, x)} ({x})"
+            options=sorted(AIRLINE_NAMES.keys()),
+            format_func=lambda x: f"{AIRLINE_NAMES.get(x, x)} ({x})"
         )
 
     # auto-fetch live weather when destination changes

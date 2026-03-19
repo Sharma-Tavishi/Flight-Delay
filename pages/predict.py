@@ -24,18 +24,19 @@ def md_to_html(text: str) -> str:
 
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils.nav import render_nav
+from utils.constants import AIRLINE_NAMES, AIRLINE_CODES, airline_label, MODEL_PATHS
 render_nav("pages/predict.py")
 
 
 @st.cache_resource
 def load_models():
-    clf        = joblib.load("models/lgbm_classifier.joblib")
-    reg        = joblib.load("models/lgbm_regressor.joblib")
-    enc        = joblib.load("models/ordinal_encoder.joblib")
-    top_orig   = joblib.load("models/top_orig.joblib")
-    top_dest   = joblib.load("models/top_dest.joblib")
-    route_data = joblib.load("models/route_avg_delay.joblib")
-    pre_info   = joblib.load("models/preprocessor_sample.joblib")
+    clf        = joblib.load(MODEL_PATHS["classifier"])
+    reg        = joblib.load(MODEL_PATHS["regressor"])
+    enc        = joblib.load(MODEL_PATHS["encoder"])
+    top_orig   = joblib.load(MODEL_PATHS["top_orig"])
+    top_dest   = joblib.load(MODEL_PATHS["top_dest"])
+    route_data = joblib.load(MODEL_PATHS["route_data"])
+    pre_info   = joblib.load(MODEL_PATHS["preprocessor"])
     return clf, reg, enc, top_orig, top_dest, route_data, pre_info
 
 clf, reg, enc, top_orig, top_dest, route_data, pre_info = load_models()
@@ -54,17 +55,6 @@ CLASS_COLORS = {0: "#16a34a", 1: "#d97706", 2: "#dc2626"}
 CLASS_BG     = {0: "#f0fdf4", 1: "#fffbeb", 2: "#fef2f2"}
 CLASS_BORDER = {0: "#86efac", 1: "#fcd34d", 2: "#fca5a5"}
 
-AIRLINE_NAMES = {
-    "AA": "American", "DL": "Delta",     "WN": "Southwest", "UA": "United",
-    "AS": "Alaska",   "B6": "JetBlue",   "NK": "Spirit",    "F9": "Frontier",
-    "HA": "Hawaiian", "G4": "Allegiant", "OO": "SkyWest",   "9E": "Endeavor",
-    "MQ": "Envoy",    "YX": "Republic",  "OH": "PSA",       "QX": "Horizon",
-    "YV": "Mesa",
-}
-AIRLINE_CODES = sorted(AIRLINE_NAMES.keys())
-
-def airline_label(code):
-    return f"{AIRLINE_NAMES.get(code, code)} ({code})"
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -450,13 +440,19 @@ with tab_chat:
                                         month, dayofweek, distance, flight_date)
                         _resp = generate_response_with_claude(user_input, _res, _info)
 
+                except anthropic.AuthenticationError:
+                    _err = "Invalid API key. Please check your Anthropic API key in the .env file."
+                except anthropic.APIConnectionError:
+                    _err = "Could not reach the AI service. Please check your internet connection and try again."
+                except anthropic.RateLimitError:
+                    _err = "Too many requests. Please wait a moment and try again."
                 except Exception as e:
-                    _err = str(e)
+                    _err = "Something went wrong. Please try again."
 
             if _warn:
                 st.error(_warn)
             elif _err:
-                st.error(f"Something went wrong: {_err}")
+                st.error(_err)
             elif _res:
                 st.divider()
                 render_result(_res, _resp)

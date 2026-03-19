@@ -10,19 +10,13 @@ warnings.filterwarnings("ignore")
 
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils.nav import render_nav
+from utils.constants import AIRLINE_NAMES, MODEL_PATHS
 render_nav("pages/insights.py")
-
-AIRLINE_NAMES = {
-    "AA": "American", "DL": "Delta", "WN": "Southwest", "UA": "United",
-    "AS": "Alaska", "B6": "JetBlue", "NK": "Spirit", "F9": "Frontier",
-    "HA": "Hawaiian", "G4": "Allegiant", "OO": "SkyWest", "9E": "Endeavor",
-    "MQ": "Envoy", "YX": "Republic", "OH": "PSA", "QX": "Horizon", "YV": "Mesa",
-}
 
 
 @st.cache_data
 def load_data():
-    insights   = joblib.load("models/insights_stats.joblib")
+    insights   = joblib.load(MODEL_PATHS["insights"])
     df         = pd.read_parquet("Data/processed_flights_sample.parquet")
     airports   = pd.read_csv("Data/airports.csv")
     airports.columns = [c.lower() for c in airports.columns]
