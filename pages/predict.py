@@ -239,8 +239,21 @@ Return ONLY the JSON object."""
         messages=[{"role": "user", "content": user_message}],
     )
     text  = response.content[0].text.strip()
-    match = re.search(r"\{.*\}", text, re.DOTALL)
-    return json.loads(match.group()) if match else {}
+    start = text.find("{")
+    if start == -1:
+        return {}
+    depth = 0
+    for i, c in enumerate(text[start:], start):
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    return json.loads(text[start:i+1])
+                except Exception:
+                    return {}
+    return {}
 
 
 def generate_response_with_claude(user_message: str, prediction: dict, flight_info: dict) -> str:

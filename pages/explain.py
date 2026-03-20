@@ -2,6 +2,8 @@ import math
 import json as _json
 import urllib.request
 import warnings
+import calendar
+from datetime import date
 import joblib
 import shap
 import numpy as np
@@ -48,20 +50,27 @@ def load_airport_coords():
 airport_coords = load_airport_coords()
 
 
-@st.cache_data(ttl=600)
-def get_current_weather(iata: str):
+@st.cache_data(ttl=86400)
+def get_historical_weather(iata: str, month: int):
     coords = airport_coords.get(iata)
     if not coords:
         return None, None
     lat, lon = coords["lat"], coords["lon"]
     try:
-        url = (f"https://api.open-meteo.com/v1/forecast"
+        year = date.today().year - 1
+        last_day = calendar.monthrange(year, month)[1]
+        url = (f"https://archive-api.open-meteo.com/v1/archive"
                f"?latitude={lat}&longitude={lon}"
-               f"&current=temperature_2m,windspeed_10m&timezone=auto")
-        with urllib.request.urlopen(url, timeout=5) as r:
+               f"&start_date={year}-{month:02d}-01&end_date={year}-{month:02d}-{last_day:02d}"
+               f"&daily=temperature_2m_mean,windspeed_10m_mean&timezone=auto")
+        with urllib.request.urlopen(url, timeout=10) as r:
             data = _json.loads(r.read())
-        cur = data.get("current", {})
-        return cur.get("temperature_2m"), cur.get("windspeed_10m")
+        daily = data.get("daily", {})
+        temps = [t for t in daily.get("temperature_2m_mean", []) if t is not None]
+        winds = [w for w in daily.get("windspeed_10m_mean", []) if w is not None]
+        avg_temp = int(round(sum(temps) / len(temps))) if temps else None
+        avg_wind = int(round(sum(winds) / len(winds))) if winds else None
+        return avg_temp, avg_wind
     except Exception:
         return None, None
 
@@ -70,6 +79,10 @@ if "_explain_temp" not in st.session_state:
     st.session_state["_explain_temp"] = 15
 if "_explain_wspd" not in st.session_state:
     st.session_state["_explain_wspd"] = 10
+if "_explain_orig_temp" not in st.session_state:
+    st.session_state["_explain_orig_temp"] = 15
+if "_explain_orig_wspd" not in st.session_state:
+    st.session_state["_explain_orig_wspd"] = 10
 
 
 def haversine_miles(iata1: str, iata2: str) -> float:
@@ -178,15 +191,6 @@ with tab_local:
             format_func=lambda x: f"{AIRLINE_NAMES.get(x, x)} ({x})"
         )
 
-    # auto-fetch live weather when destination changes
-    if st.session_state.get("_explain_prev_dest") != dest_e:
-        if len(dest_e) == 3 and dest_e in airport_coords:
-            wt, ww = get_current_weather(dest_e)
-            if wt is not None:
-                st.session_state["_explain_temp"] = int(round(wt))
-                st.session_state["_explain_wspd"] = int(round(float(ww)))
-        st.session_state["_explain_prev_dest"] = dest_e
-
     with col2:
         dep_hour_e  = st.slider("Departure hour", 0, 23, 17, format="%d:00")
         month_e     = st.selectbox("Month", options=list(range(1, 13)),
@@ -196,10 +200,47 @@ with tab_local:
             options=[1,2,3,4,5,6,7],
             format_func=lambda x: ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"][x-1])
     with col3:
-        temp_e = st.number_input("Temp (°C)",  -30, 45, key="_explain_temp")
-        wspd_e = st.number_input("Wind (km/h)",  0, 150, key="_explain_wspd")
+        pass
+
+    # re-fetch historical weather when origin, destination, or month changes
+    origin_changed = st.session_state.get("_explain_prev_origin") != origin_e
+    dest_changed   = st.session_state.get("_explain_prev_dest")   != dest_e
+    month_changed  = st.session_state.get("_explain_prev_month")  != month_e
+
+    if origin_changed or month_changed:
+        if len(origin_e) == 3 and origin_e in airport_coords:
+            ot, ow = get_historical_weather(origin_e, month_e)
+            if ot is not None:
+                st.session_state["_explain_orig_temp"] = ot
+                st.session_state["_explain_orig_wspd"] = ow
+        st.session_state["_explain_prev_origin"] = origin_e
+
+    if dest_changed or month_changed:
+        if len(dest_e) == 3 and dest_e in airport_coords:
+            wt, ww = get_historical_weather(dest_e, month_e)
+            if wt is not None:
+                st.session_state["_explain_temp"] = wt
+                st.session_state["_explain_wspd"] = ww
+        st.session_state["_explain_prev_dest"] = dest_e
+
+    if month_changed:
+        st.session_state["_explain_prev_month"] = month_e
+
+    MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+    wcol1, wcol2 = st.columns(2)
+    with wcol1:
+        st.markdown("<small style='color:#9ca3af'>Origin weather</small>", unsafe_allow_html=True)
+        orig_temp_e = st.number_input("Temp (°C)",  -30, 45, key="_explain_orig_temp")
+        orig_wspd_e = st.number_input("Wind (km/h)",  0, 150, key="_explain_orig_wspd")
+        if origin_e in airport_coords:
+            st.caption(f"📍 Avg weather for {MONTH_NAMES[month_e-1]} at {origin_e}")
+    with wcol2:
+        st.markdown("<small style='color:#9ca3af'>Destination weather</small>", unsafe_allow_html=True)
+        temp_e = st.number_input("Temp (°C) ",  -30, 45, key="_explain_temp")
+        wspd_e = st.number_input("Wind (km/h) ",  0, 150, key="_explain_wspd")
         if dest_e in airport_coords:
-            st.caption(f"📍 Live weather at {dest_e}")
+            st.caption(f"📍 Avg weather for {MONTH_NAMES[month_e-1]} at {dest_e}")
 
     if st.button("Explain this flight", type="primary"):
         with st.spinner("Computing SHAP values..."):
