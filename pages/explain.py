@@ -14,9 +14,10 @@ import streamlit as st
 warnings.filterwarnings("ignore")
 
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from utils.nav import render_nav
+from utils.nav import render_nav, get_theme
 from utils.constants import AIRLINE_NAMES, MODEL_PATHS
 render_nav("pages/explain.py")
+t = get_theme()
 
 
 @st.cache_resource
@@ -143,7 +144,7 @@ def build_row(origin, dest, carrier, dep_hour, arr_hour, month, dayofweek,
     return df_row[FEATURE_COLS], route_avg_delay
 
 
-def waterfall_chart(shap_vals, feature_vals, base_value, predicted_class):
+def waterfall_chart(shap_vals, feature_vals, base_value, predicted_class, font_color="#e5e7eb"):
     labels  = [FEATURE_LABELS.get(f, f) for f in FEATURE_COLS]
     idx     = np.argsort(np.abs(shap_vals))[::-1][:10]
     s_vals  = shap_vals[idx]
@@ -159,14 +160,20 @@ def waterfall_chart(shap_vals, feature_vals, base_value, predicted_class):
         textposition="outside",
     ))
     fig.update_layout(
-        title=f"Why this prediction? (class: {['On-time','Minor Delay','Major Delay'][predicted_class]})",
-        xaxis_title="SHAP value (pushes toward delay →  or on-time ←)",
-        yaxis=dict(autorange="reversed"),
+        title=dict(
+            text=f"Why this prediction? (class: {['On-time','Minor Delay','Major Delay'][predicted_class]})",
+            font=dict(color=font_color),
+        ),
+        xaxis=dict(
+            title=dict(text="SHAP value (pushes toward delay →  or on-time ←)", font=dict(color=font_color)),
+            tickfont=dict(color=font_color),
+        ),
+        yaxis=dict(autorange="reversed", tickfont=dict(color=font_color)),
         height=420,
         margin=dict(l=20, r=80, t=50, b=40),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        font_color="#e5e7eb",
+        font=dict(color=font_color),
     )
     return fig
 
@@ -174,7 +181,7 @@ def waterfall_chart(shap_vals, feature_vals, base_value, predicted_class):
 st.markdown("<h1 style='margin-bottom:0'>Explainability Dashboard</h1>", unsafe_allow_html=True)
 st.markdown("<p style='margin-top:0.2rem;'>Understand why the model makes each prediction using SHAP values.</p>",
             unsafe_allow_html=True)
-st.markdown("<hr style='border:none;border-top:1px solid rgba(255,255,255,0.08);margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
+st.markdown(f"<hr style='border:none;border-top:1px solid {t['border']};margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
 
 tab_local, = st.tabs(["Single Flight Explanation"])
 
@@ -280,7 +287,8 @@ with tab_local:
             """, unsafe_allow_html=True)
 
             raw_vals = df_row.iloc[0].values
-            fig = waterfall_chart(sv[pred_class], raw_vals, base_vals[pred_class], pred_class)
+            fig = waterfall_chart(sv[pred_class], raw_vals, base_vals[pred_class], pred_class,
+                                  font_color=get_theme()["font_color"])
             st.plotly_chart(fig, use_container_width=True)
 
             st.caption(

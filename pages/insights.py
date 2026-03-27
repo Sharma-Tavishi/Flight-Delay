@@ -9,9 +9,10 @@ import streamlit as st
 warnings.filterwarnings("ignore")
 
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from utils.nav import render_nav
+from utils.nav import render_nav, get_theme
 from utils.constants import AIRLINE_NAMES, MODEL_PATHS
 render_nav("pages/insights.py")
+t = get_theme()
 
 
 @st.cache_data
@@ -31,7 +32,7 @@ airline_stats, route_stats, airports, df = load_data()
 st.markdown("<h1 style='margin-bottom:0'>Insights</h1>", unsafe_allow_html=True)
 st.markdown("<p style='margin-top:0.2rem;'>Explore patterns in the flight delay dataset.</p>",
             unsafe_allow_html=True)
-st.markdown("<hr style='border:none;border-top:1px solid rgba(255,255,255,0.08);margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
+st.markdown(f"<hr style='border:none;border-top:1px solid {t['border']};margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
 
 tab_airline, tab_map = st.tabs(["Airline Reliability", "Route Map"])
 
@@ -65,8 +66,18 @@ with tab_airline:
         margin=dict(l=20, r=40, t=30, b=40),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
-        font_color="#e5e7eb",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        font=dict(color=t["font_color"]),
+        xaxis=dict(
+            title_font=dict(color=t["font_color"]),
+            tickfont=dict(color=t["font_color"]),
+        ),
+        yaxis=dict(
+            tickfont=dict(color=t["font_color"]),
+        ),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
+            font=dict(color=t["font_color"]),
+        ),
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -163,7 +174,7 @@ with tab_map:
             text=shown["iata"],
             mode="markers+text",
             marker=dict(size=5, color="#6366f1"),
-            textfont=dict(size=9, color="#e5e7eb"),
+            textfont=dict(size=9, color=t["font_color"]),
             textposition="top center",
             showlegend=False,
         ))
@@ -179,17 +190,20 @@ with tab_map:
             geo=dict(
                 scope="usa",
                 projection_type="albers usa",
-                showland=True, landcolor="#1e293b",
-                showocean=True, oceancolor="#0f172a",
-                showlakes=True, lakecolor="#0f172a",
+                showland=True, landcolor=t["map_land"],
+                showocean=True, oceancolor=t["map_ocean"],
+                showlakes=True, lakecolor=t["map_lake"],
                 showcountries=False,
                 bgcolor="rgba(0,0,0,0)",
             ),
             height=520,
             margin=dict(l=0, r=0, t=10, b=0),
             paper_bgcolor="rgba(0,0,0,0)",
-            font_color="#e5e7eb",
-            legend=dict(orientation="h", yanchor="bottom", y=0, xanchor="right", x=1),
+            font=dict(color=t["font_color"]),
+            legend=dict(
+                orientation="h", yanchor="bottom", y=0, xanchor="right", x=1,
+                font=dict(color=t["font_color"]),
+            ),
         )
         st.plotly_chart(fig2, use_container_width=True)
         st.caption(f"Showing {len(filtered_routes)} routes. 🟢 On-time &nbsp; 🟡 Minor delays &nbsp; 🔴 Major delays")

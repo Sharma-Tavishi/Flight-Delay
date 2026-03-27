@@ -1,38 +1,39 @@
 import streamlit as st
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from utils.nav import render_nav
+from utils.nav import render_nav, get_theme
 render_nav("pages/about.py")
+t = get_theme()
 
 st.markdown("<h1 style='margin-bottom:0.2rem'>About</h1>", unsafe_allow_html=True)
-st.markdown("<hr style='border:none;border-top:1px solid rgba(255,255,255,0.08);margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
+st.markdown(f"<hr style='border:none;border-top:1px solid {t['border']};margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
 
-st.markdown("""
+st.markdown(f"""
 <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);
             border-radius:12px;padding:1.2rem 1.5rem;margin:0.8rem 0 1.8rem 0;">
-  <div style="color:#94a3b8;font-size:0.88rem;margin-bottom:0.2rem">Developed by</div>
-  <div style="font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:0.3rem">
+  <div style="color:{t["text_muted"]};font-size:0.88rem;margin-bottom:0.2rem">Developed by</div>
+  <div style="font-size:1.1rem;font-weight:700;color:{t["text_primary"]};margin-bottom:0.3rem">
     Tavishi Sharma
   </div>
-  <div style="color:#94a3b8;font-size:0.92rem;">
+  <div style="color:{t["text_muted"]};font-size:0.92rem;">
     Honors Thesis · Department of Computer Science
   </div>
   <div style="margin-top:0.8rem;display:flex;gap:1rem;flex-wrap:wrap">
     <a href="https://www.linkedin.com/in/tavishi-sharma05/" target="_blank"
        style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.3rem 0.85rem;
-              border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
-              color:#e2e8f0;text-decoration:none;font-size:0.85rem;font-weight:500;">
+              border-radius:8px;background:{t["link_btn_bg"]};border:1px solid {t["link_btn_border"]};
+              color:{t["text_primary"]};text-decoration:none;font-size:0.85rem;font-weight:500;">
       🔗 LinkedIn
     </a>
     <a href="https://github.com/Sharma-Tavishi" target="_blank"
        style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.3rem 0.85rem;
-              border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
-              color:#e2e8f0;text-decoration:none;font-size:0.85rem;font-weight:500;">
+              border-radius:8px;background:{t["link_btn_bg"]};border:1px solid {t["link_btn_border"]};
+              color:{t["text_primary"]};text-decoration:none;font-size:0.85rem;font-weight:500;">
       💻 GitHub
     </a>
     <a href="https://sharma-tavishi.github.io" target="_blank"
        style="display:inline-flex;align-items:center;gap:0.4rem;padding:0.3rem 0.85rem;
-              border-radius:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);
-              color:#e2e8f0;text-decoration:none;font-size:0.85rem;font-weight:500;">
+              border-radius:8px;background:{t["link_btn_bg"]};border:1px solid {t["link_btn_border"]};
+              color:{t["text_primary"]};text-decoration:none;font-size:0.85rem;font-weight:500;">
       🌐 Website
     </a>
   </div>

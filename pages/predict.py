@@ -23,9 +23,10 @@ def md_to_html(text: str) -> str:
     return text
 
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from utils.nav import render_nav
+from utils.nav import render_nav, get_theme
 from utils.constants import AIRLINE_NAMES, AIRLINE_CODES, airline_label, MODEL_PATHS
 render_nav("pages/predict.py")
+t = get_theme()
 
 
 @st.cache_resource
@@ -340,7 +341,7 @@ def render_result(result, response_text=None):
 st.markdown("<h1 style='margin-bottom:0'>Flight Delay Predictor</h1>", unsafe_allow_html=True)
 st.markdown("<p style='margin-top:0.2rem;'>Ask about any US domestic flight</p>",
             unsafe_allow_html=True)
-st.markdown("<hr style='border:none;border-top:1px solid rgba(255,255,255,0.08);margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
+st.markdown(f"<hr style='border:none;border-top:1px solid {t['border']};margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
 
 tab_chat, tab_manual = st.tabs(["Natural Language", "Manual Input"])
 
