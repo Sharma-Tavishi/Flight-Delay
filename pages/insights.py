@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+from plotly.subplots import make_subplots
 import streamlit as st
 
 warnings.filterwarnings("ignore")
@@ -34,7 +35,7 @@ st.markdown("<p style='margin-top:0.2rem;'>Explore patterns in the flight delay 
             unsafe_allow_html=True)
 st.markdown(f"<hr style='border:none;border-top:1px solid {t['border']};margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
 
-tab_airline, tab_map = st.tabs(["Airline Reliability", "Route Map"])
+tab_airline, tab_patterns, tab_map = st.tabs(["Airline Reliability", "Delay Patterns", "Route Map"])
 
 with tab_airline:
     st.markdown("Ranked by on-time performance across **987,000 flights** (2022–2025).")
@@ -89,6 +90,86 @@ with tab_airline:
     table["Avg Delay (min)"] = table["Avg Delay (min)"].round(1)
     table = table.sort_values("On-time %", ascending=False).reset_index(drop=True)
     st.dataframe(table, use_container_width=True, hide_index=True)
+
+with tab_patterns:
+    st.markdown("On-time performance broken down by **departure hour**, **month**, and **day of week** across 987K flights.")
+
+    MONTH_LABELS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    DOW_LABELS   = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
+
+    hour_ontime = df.groupby("dep_hour")["DELAY_CLASS"].apply(lambda x: (x == 0).mean() * 100).reset_index()
+    hour_ontime.columns = ["hour", "ontime_pct"]
+
+    month_ontime = df.groupby("month")["DELAY_CLASS"].apply(lambda x: (x == 0).mean() * 100).reset_index()
+    month_ontime.columns = ["month", "ontime_pct"]
+    month_ontime["month"] = month_ontime["month"].astype(int)
+    month_ontime["label"] = month_ontime["month"].apply(lambda m: MONTH_LABELS[m - 1])
+
+    dow_ontime = df.groupby("dayofweek")["DELAY_CLASS"].apply(lambda x: (x == 0).mean() * 100).reset_index()
+    dow_ontime.columns = ["dow", "ontime_pct"]
+    dow_ontime["dow"] = dow_ontime["dow"].astype(int)
+    dow_ontime["label"] = dow_ontime["dow"].apply(lambda d: DOW_LABELS[d - 1])
+
+    bar_color   = "#6366f1"
+    hover_color = "#818cf8"
+
+    fig_p = make_subplots(
+        rows=1, cols=3,
+        subplot_titles=["By Departure Hour", "By Month", "By Day of Week"],
+        horizontal_spacing=0.10,
+    )
+
+    fig_p.add_trace(go.Scatter(
+        x=hour_ontime["hour"],
+        y=hour_ontime["ontime_pct"],
+        mode="lines+markers",
+        line=dict(color=bar_color, width=2.5),
+        marker=dict(size=6, color=bar_color),
+        fill="tozeroy",
+        fillcolor="rgba(99,102,241,0.12)",
+        hovertemplate="%{x}:00 → %{y:.1f}% on-time<extra></extra>",
+        showlegend=False,
+    ), row=1, col=1)
+
+    fig_p.add_trace(go.Bar(
+        x=month_ontime["label"],
+        y=month_ontime["ontime_pct"],
+        marker_color=bar_color,
+        hovertemplate="%{x}: %{y:.1f}% on-time<extra></extra>",
+        showlegend=False,
+    ), row=1, col=2)
+
+    fig_p.add_trace(go.Bar(
+        x=dow_ontime["label"],
+        y=dow_ontime["ontime_pct"],
+        marker_color=bar_color,
+        hovertemplate="%{x}: %{y:.1f}% on-time<extra></extra>",
+        showlegend=False,
+    ), row=1, col=3)
+
+    fig_p.update_yaxes(
+        title_text="On-time %", title_font=dict(color=t["font_color"]),
+        tickfont=dict(color=t["font_color"]), range=[70, 100], row=1, col=1,
+    )
+    fig_p.update_yaxes(
+        tickfont=dict(color=t["font_color"]), range=[70, 100], row=1, col=2,
+    )
+    fig_p.update_yaxes(
+        tickfont=dict(color=t["font_color"]), range=[70, 100], row=1, col=3,
+    )
+    fig_p.update_xaxes(tickfont=dict(color=t["font_color"]), title_font=dict(color=t["font_color"]))
+    fig_p.update_annotations(font=dict(color=t["font_color"]))  # subplot titles
+
+    fig_p.update_layout(
+        height=380,
+        margin=dict(l=20, r=20, t=60, b=40),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(color=t["font_color"]),
+    )
+
+    st.plotly_chart(fig_p, use_container_width=True)
+    st.caption("Y-axis starts at 70% to highlight relative differences between groups.")
 
 with tab_map:
     st.markdown("Top routes colored by average delay class. Select a filter below.")

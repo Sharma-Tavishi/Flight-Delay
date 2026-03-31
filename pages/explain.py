@@ -148,7 +148,29 @@ def waterfall_chart(shap_vals, feature_vals, base_value, predicted_class, font_c
     labels  = [FEATURE_LABELS.get(f, f) for f in FEATURE_COLS]
     idx     = np.argsort(np.abs(shap_vals))[::-1][:10]
     s_vals  = shap_vals[idx]
-    f_names = [f"{labels[i]} = {feature_vals[i]}" for i in idx]
+
+    cat_decode = {
+        "origin_topK": enc.categories_[CAT_COLS.index("origin_topK")],
+        "dest_topK":   enc.categories_[CAT_COLS.index("dest_topK")],
+        "carrier":     enc.categories_[CAT_COLS.index("carrier")],
+    }
+    int_features = {"dep_hour", "arr_hour", "month", "dayofweek", "coco"}
+
+    def fmt(feat, val):
+        if feat in cat_decode:
+            try:
+                return cat_decode[feat][int(val)]
+            except (IndexError, ValueError):
+                return str(val)
+        if feat == "route_avg_delay":
+            return f"{float(val):.1f} min"
+        if feat == "distance":
+            return f"{float(val):.0f} mi"
+        if feat in int_features:
+            return str(int(val))
+        return f"{float(val):.1f}"
+
+    f_names = [f"{labels[i]} = {fmt(FEATURE_COLS[i], feature_vals[i])}" for i in idx]
     colors  = ["#dc2626" if v > 0 else "#16a34a" for v in s_vals]
 
     fig = go.Figure(go.Bar(
@@ -157,7 +179,7 @@ def waterfall_chart(shap_vals, feature_vals, base_value, predicted_class, font_c
         orientation="h",
         marker_color=colors,
         text=[f"{v:+.3f}" for v in s_vals],
-        textposition="outside",
+        textposition="auto",
     ))
     fig.update_layout(
         title=dict(
@@ -170,7 +192,7 @@ def waterfall_chart(shap_vals, feature_vals, base_value, predicted_class, font_c
         ),
         yaxis=dict(autorange="reversed", tickfont=dict(color=font_color)),
         height=420,
-        margin=dict(l=20, r=80, t=50, b=40),
+        margin=dict(l=20, r=100, t=50, b=40),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(color=font_color),

@@ -49,7 +49,7 @@ FEATURE_COLS = pre_info["feature_cols"]
 ROUTE_AVG    = route_data["route_avg"]
 GLOBAL_AVG   = route_data["global_avg"]
 API_KEY      = os.getenv("ANTHROPIC_API_KEY", "")
-AVIATION_KEY = os.getenv("AVIATIONSTACK_API_KEY", "").strip()
+AVIATION_KEY = os.getenv("AERODATABOX_API_KEY", "").strip()
 
 CLASS_LABELS = {0: "On-time", 1: "Minor Delay (16–59 min)", 2: "Major Delay (60+ min)"}
 CLASS_COLORS = {0: "#16a34a", 1: "#d97706", 2: "#dc2626"}
@@ -170,40 +170,49 @@ def predict(origin, dest, carrier, dep_hour, arr_hour,
 
 
 @st.cache_data(ttl=300, show_spinner=False)
-def lookup_flight(flight_iata: str) -> dict:
+def lookup_flight(flight_iata: str, flight_date: str | None = None) -> dict:
     if not AVIATION_KEY:
         return {}
     try:
+        date_str = flight_date or date.today().strftime("%Y-%m-%d")
+        url = f"https://aerodatabox.p.rapidapi.com/flights/number/{flight_iata.upper()}/{date_str}"
         resp = requests.get(
-            "http://api.aviationstack.com/v1/flights",
-            params={"access_key": AVIATION_KEY, "flight_iata": flight_iata.upper()},
+            url,
+            headers={
+                "x-rapidapi-key":  AVIATION_KEY,
+                "x-rapidapi-host": "aerodatabox.p.rapidapi.com",
+            },
             timeout=8,
         )
-        data = resp.json().get("data", [])
-        if not data:
+        data = resp.json()
+        if not data or not isinstance(data, list):
             return {}
         flight = data[0]
-        dep    = flight.get("departure", {})
-        arr    = flight.get("arrival",   {})
-        al     = flight.get("airline",   {})
+        dep = flight.get("departure", {})
+        arr = flight.get("arrival",   {})
+        al  = flight.get("airline",   {})
 
-        scheduled = dep.get("scheduled") or dep.get("estimated") or ""
+        sched_obj = dep.get("scheduledTime") or {}
+        revised_obj = dep.get("revisedTime") or {}
+        scheduled = (sched_obj.get("local") or sched_obj.get("utc")
+                     or revised_obj.get("local") or revised_obj.get("utc") or "")
         dep_hour  = None
         fl_date   = None
         if scheduled:
             try:
-                dt       = datetime.fromisoformat(scheduled.replace("Z", "+00:00"))
+                cleaned = scheduled.replace("T", " ").split("+")[0].split("Z")[0].strip()[:16]
+                dt      = datetime.strptime(cleaned, "%Y-%m-%d %H:%M")
                 dep_hour = dt.hour
                 fl_date  = dt.strftime("%Y-%m-%d")
             except Exception:
                 pass
 
         return {
-            "origin":      dep.get("iata") or None,
-            "dest":        arr.get("iata") or None,
-            "carrier":     al.get("iata")  or None,
+            "origin":      (dep.get("airport") or {}).get("iata") or None,
+            "dest":        (arr.get("airport") or {}).get("iata") or None,
+            "carrier":     al.get("iata") or None,
             "dep_hour":    dep_hour,
-            "flight_date": fl_date,
+            "flight_date": fl_date or date_str,
         }
     except Exception:
         return {}
@@ -385,7 +394,7 @@ with tab_chat:
             with st.spinner("Analyzing your flight..."):
                 try:
                     parsed = parse_with_claude(user_input)
-                    flight_num = parsed.get("flight_number")
+                    flight_num = (parsed.get("flight_number") or "").replace(" ", "").upper() or None
 
                     if (not parsed.get("origin") and not parsed.get("dest")
                             and not parsed.get("carrier") and parsed.get("dep_hour") is None
@@ -395,7 +404,7 @@ with tab_chat:
 
                     if not _warn and flight_num:
                         if AVIATION_KEY:
-                            looked_up = lookup_flight(flight_num)
+                            looked_up = lookup_flight(flight_num, parsed.get("flight_date"))
                             if looked_up:
                                 for key in ("origin", "dest", "carrier", "dep_hour", "flight_date"):
                                     if not parsed.get(key) and looked_up.get(key) is not None:
