@@ -30,7 +30,7 @@ def load_data():
 
 airline_stats, route_stats, airports, df = load_data()
 
-st.markdown("<h1 style='margin-bottom:0'>Insights</h1>", unsafe_allow_html=True)
+st.markdown("<div style='font-size:2.2rem;font-weight:800;line-height:1.2;margin-bottom:0'>Insights</div>", unsafe_allow_html=True)
 st.markdown("<p style='margin-top:0.2rem;'>Explore patterns in the flight delay dataset.</p>",
             unsafe_allow_html=True)
 st.markdown(f"<hr style='border:none;border-top:1px solid {t['border']};margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
@@ -83,13 +83,49 @@ with tab_airline:
     st.plotly_chart(fig, use_container_width=True)
 
     table = grp[["carrier_name","on_time","minor","major","avg_delay_min"]].copy()
-    table.columns = ["Airline", "On-time %", "Minor Delay %", "Major Delay %", "Avg Delay (min)"]
-    table["On-time %"]      = (table["On-time %"]      * 100).round(1).astype(str) + "%"
-    table["Minor Delay %"]  = (table["Minor Delay %"]  * 100).round(1).astype(str) + "%"
-    table["Major Delay %"]  = (table["Major Delay %"]  * 100).round(1).astype(str) + "%"
-    table["Avg Delay (min)"] = table["Avg Delay (min)"].round(1)
-    table = table.sort_values("On-time %", ascending=False).reset_index(drop=True)
-    st.dataframe(table, use_container_width=True, hide_index=True)
+    table = table.sort_values("on_time", ascending=False).reset_index(drop=True)
+
+    header_bg   = "rgba(99,102,241,0.15)"
+    row_alt_bg  = "rgba(99,102,241,0.04)"
+    border_col  = t["border"]
+    font_col    = t["font_color"]
+
+    rows_html = ""
+    for i, r in table.iterrows():
+        bg = row_alt_bg if i % 2 == 0 else "transparent"
+        rows_html += f"""
+        <tr style="background:{bg}">
+          <td>{r['carrier_name']}</td>
+          <td style="color:#16a34a;font-weight:600;">{r['on_time']*100:.1f}%</td>
+          <td style="color:#d97706;font-weight:600;">{r['minor']*100:.1f}%</td>
+          <td style="color:#dc2626;font-weight:600;">{r['major']*100:.1f}%</td>
+          <td>{r['avg_delay_min']:.1f} min</td>
+        </tr>"""
+
+    st.markdown(f"""
+    <style>
+      .rel-table {{ width:100%;border-collapse:collapse;font-size:0.97rem;color:{font_col}; }}
+      .rel-table th, .rel-table td {{
+        text-align:center;padding:0.65rem 0.5rem;
+        border-bottom:1px solid {border_col};width:20%;
+      }}
+      .rel-table th {{
+        background:{header_bg};font-weight:700;letter-spacing:0.02em;
+      }}
+      .rel-table tr:last-child td {{ border-bottom:none; }}
+      .rel-table tr:hover {{ background:rgba(99,102,241,0.08) !important; }}
+    </style>
+    <table class="rel-table">
+      <thead><tr>
+        <th>Airline</th>
+        <th>On-time %</th>
+        <th>Minor Delay %</th>
+        <th>Major Delay %</th>
+        <th>Avg Delay</th>
+      </tr></thead>
+      <tbody>{rows_html}</tbody>
+    </table>
+    """, unsafe_allow_html=True)
 
 with tab_patterns:
     st.markdown("On-time performance broken down by **departure hour**, **month**, and **day of week** across 987K flights.")

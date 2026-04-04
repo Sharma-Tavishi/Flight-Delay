@@ -17,3 +17,6 @@ __pycache__/
 
 # word temp files
 ~$*.docx
+
+# thesis paper
+docs/

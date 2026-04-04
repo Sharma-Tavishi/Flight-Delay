@@ -9,7 +9,6 @@ import streamlit as st
 import anthropic
 import requests
 from datetime import datetime, date
-from meteostat import Stations, Hourly
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,7 +23,7 @@ def md_to_html(text: str) -> str:
 
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from utils.nav import render_nav, get_theme
-from utils.constants import AIRLINE_NAMES, AIRLINE_CODES, airline_label, MODEL_PATHS
+from utils.constants import AIRLINE_NAMES, AIRLINE_CODES, airline_label, MODEL_PATHS, AIRPORT_NAMES, airport_label
 render_nav("pages/predict.py")
 t = get_theme()
 
@@ -61,20 +60,39 @@ CLASS_BORDER = {0: "#86efac", 1: "#fcd34d", 2: "#fca5a5"}
 @st.cache_data(ttl=3600, show_spinner=False)
 def get_weather(iata: str, lat: float, lon: float, flight_date: str, hour: int):
     try:
-        dt       = datetime.strptime(flight_date, "%Y-%m-%d")
-        stations = Stations().nearby(lat, lon).fetch(1)
-        if stations.empty:
+        from datetime import date as _date
+        dt      = datetime.strptime(flight_date, "%Y-%m-%d").date()
+        today   = _date.today()
+        diff    = (dt - today).days
+
+        if diff > 16:
+            return {}  # beyond forecast range, fall back to medians
+
+        base = ("https://api.open-meteo.com/v1/forecast" if diff >= 0
+                else "https://archive-api.open-meteo.com/v1/archive")
+        url  = (f"{base}?latitude={lat}&longitude={lon}"
+                f"&start_date={flight_date}&end_date={flight_date}"
+                f"&hourly=temperature_2m,windspeed_10m,precipitation,snowfall,weathercode"
+                f"&timezone=auto")
+        resp    = requests.get(url, timeout=10)
+        hourly  = resp.json().get("hourly", {})
+        idx     = min(hour, len(hourly.get("temperature_2m", [])) - 1)
+        if idx < 0:
             return {}
-        wx = Hourly(stations.index[0], dt, dt).fetch()
-        if wx.empty:
-            return {}
-        row = wx.iloc[min(hour, len(wx) - 1)]
+
+        def safe(key):
+            try:
+                v = hourly[key][idx]
+                return float(v) if v is not None else float("nan")
+            except Exception:
+                return float("nan")
+
         return {
-            "temp": float(row.get("temp", np.nan)),
-            "wspd": float(row.get("wspd", np.nan)),
-            "prcp": float(row.get("prcp", np.nan)),
-            "snow": float(row.get("snow", np.nan)),
-            "coco": float(row.get("coco", np.nan)),
+            "temp": safe("temperature_2m"),
+            "wspd": safe("windspeed_10m"),
+            "prcp": safe("precipitation"),
+            "snow": safe("snowfall"),
+            "coco": safe("weathercode"),
         }
     except Exception:
         return {}
@@ -319,13 +337,26 @@ def render_result(result, response_text=None):
     </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns(3)
-    for col, label, prob in zip(
-        [col1, col2, col3],
-        ["On-time", "Minor delay", "Major delay"],
-        result["probs"]
-    ):
-        col.metric(label, f"{prob*100:.0f}%")
+    probs = result["probs"]
+    st.markdown(f"""
+    <div style="display:flex;gap:1rem;margin:1rem 0;">
+      <div style="flex:1;background:rgba(22,163,74,0.12);border:1px solid #16a34a;
+                  border-radius:10px;padding:1rem;text-align:center;">
+        <div style="color:#16a34a;font-size:2rem;font-weight:800;">{probs[0]*100:.0f}%</div>
+        <div style="color:#6b7280;font-size:0.95rem;font-weight:500;margin-top:0.2rem;">On-time</div>
+      </div>
+      <div style="flex:1;background:rgba(217,119,6,0.12);border:1px solid #d97706;
+                  border-radius:10px;padding:1rem;text-align:center;">
+        <div style="color:#d97706;font-size:2rem;font-weight:800;">{probs[1]*100:.0f}%</div>
+        <div style="color:#6b7280;font-size:0.95rem;font-weight:500;margin-top:0.2rem;">Minor delay</div>
+      </div>
+      <div style="flex:1;background:rgba(220,38,38,0.12);border:1px solid #dc2626;
+                  border-radius:10px;padding:1rem;text-align:center;">
+        <div style="color:#dc2626;font-size:2rem;font-weight:800;">{probs[2]*100:.0f}%</div>
+        <div style="color:#6b7280;font-size:0.95rem;font-weight:500;margin-top:0.2rem;">Major delay</div>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     if response_text:
         st.markdown(f"""
@@ -335,19 +366,8 @@ def render_result(result, response_text=None):
         </div>
         """, unsafe_allow_html=True)
 
-    wx = result.get("weather", {})
-    if any(not np.isnan(wx.get(k, float("nan"))) for k in ["temp","wspd"]):
-        with st.expander("Weather at origin airport"):
-            wc1, wc2, wc3 = st.columns(3)
-            if not np.isnan(wx.get("temp", float("nan"))):
-                wc1.metric("Temperature", f"{wx['temp']:.0f}°C")
-            if not np.isnan(wx.get("wspd", float("nan"))):
-                wc2.metric("Wind speed", f"{wx['wspd']:.0f} km/h")
-            if wx.get("prcp", 0) > 0:
-                wc3.metric("Precipitation", f"{wx['prcp']:.1f} mm")
 
-
-st.markdown("<h1 style='margin-bottom:0'>Flight Delay Predictor</h1>", unsafe_allow_html=True)
+st.markdown("<div style='font-size:2.2rem;font-weight:800;line-height:1.2;margin-bottom:0'>Flight Delay Predictor</div>", unsafe_allow_html=True)
 st.markdown("<p style='margin-top:0.2rem;'>Ask about any US domestic flight</p>",
             unsafe_allow_html=True)
 st.markdown(f"<hr style='border:none;border-top:1px solid {t['border']};margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
@@ -540,10 +560,26 @@ with tab_manual:
         if _k not in st.session_state:
             st.session_state[_k] = _v
 
+    airport_options_m = sorted(AIRPORT_NAMES.keys())
+
     col1, col2, col3 = st.columns(3)
     with col1:
-        origin_m = st.text_input("Origin",      max_chars=3, key="mi_origin").upper()
-        dest_m   = st.text_input("Destination", max_chars=3, key="mi_dest").upper()
+        origin_m = st.selectbox(
+            "Origin",
+            options=airport_options_m,
+            index=airport_options_m.index(st.session_state["mi_origin"])
+                  if st.session_state["mi_origin"] in airport_options_m else 0,
+            format_func=airport_label,
+            key="mi_origin_sel"
+        )
+        dest_m = st.selectbox(
+            "Destination",
+            options=airport_options_m,
+            index=airport_options_m.index(st.session_state["mi_dest"])
+                  if st.session_state["mi_dest"] in airport_options_m else 0,
+            format_func=airport_label,
+            key="mi_dest_sel"
+        )
     with col2:
         carrier_m     = st.selectbox("Airline", options=AIRLINE_CODES,
                                      format_func=airline_label, key="mi_carrier")

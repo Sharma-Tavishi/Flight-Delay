@@ -4,7 +4,7 @@ from utils.nav import render_nav, get_theme
 render_nav("pages/about.py")
 t = get_theme()
 
-st.markdown("<h1 style='margin-bottom:0.2rem'>About</h1>", unsafe_allow_html=True)
+st.markdown("<div style='font-size:2.2rem;font-weight:800;line-height:1.2;margin-bottom:0.2rem'>About</div>", unsafe_allow_html=True)
 st.markdown(f"<hr style='border:none;border-top:1px solid {t['border']};margin:0.8rem 0 1rem 0'>", unsafe_allow_html=True)
 
 st.markdown(f"""
@@ -209,8 +209,9 @@ with tc3:
 - Streamlit
 - Plotly (maps & charts)
 - Open-Meteo API (weather)
+- AeroDataBox API (live flight lookup)
 - python-dotenv
-- Dark theme
+- Dark / Light theme
 """)
 
 st.divider()

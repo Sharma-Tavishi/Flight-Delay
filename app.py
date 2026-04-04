@@ -3,7 +3,7 @@ import streamlit as st
 st.set_page_config(
     page_title="Flight Delay Predictor",
     page_icon="✈️",
-    layout="centered",
+    layout="wide",
 )
 
 pg = st.navigation([

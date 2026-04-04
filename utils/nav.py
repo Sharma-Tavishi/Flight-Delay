@@ -47,6 +47,38 @@ def render_nav(current: str):
 
     base_css = f"""
     <style>
+      html, body, .stApp {{
+        font-size: 16px !important;
+      }}
+      p, span, label, li, td, th {{
+        font-size: 1rem !important;
+      }}
+      h1, [data-testid="stMarkdownContainer"] h1,
+      .stMarkdown h1, div[data-testid="stVerticalBlock"] h1 {{
+        font-size: 3rem !important; font-weight: 800 !important;
+      }}
+      h2, [data-testid="stMarkdownContainer"] h2 {{
+        font-size: 1.9rem !important; font-weight: 700 !important;
+      }}
+      h3, [data-testid="stMarkdownContainer"] h3 {{
+        font-size: 1.4rem !important; font-weight: 600 !important;
+      }}
+      [data-testid="stTextInput"] input,
+      [data-testid="stNumberInput"] input,
+      [data-testid="stSelectbox"] div[data-baseweb="select"] > div {{
+        font-size: 1rem !important;
+      }}
+      [data-testid="stButton"] button {{
+        font-size: 1rem !important;
+      }}
+      [data-testid="stMetricValue"] {{ font-size: 1.4rem !important; }}
+      [data-testid="stMetricLabel"] {{ font-size: 0.9rem !important; }}
+      .block-container {{
+        max-width: 960px !important;
+        margin: 0 auto !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+      }}
       [data-testid="collapsedControl"]  {{ display: none !important; }}
       section[data-testid="stSidebar"]  {{ display: none !important; }}
       header[data-testid="stHeader"]    {{ display: none !important; }}
