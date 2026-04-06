@@ -223,14 +223,18 @@ def waterfall_chart(shap_vals, feature_vals, base_value, predicted_class, font_c
         return f"{float(val):.1f}"
 
     f_names = [f"{labels[i]} = {fmt(FEATURE_COLS[i], feature_vals[i])}" for i in idx]
-    colors  = ["#dc2626" if v > 0 else "#16a34a" for v in s_vals]
+
+    # Normalize to "delay perspective": positive = toward delay (red right), negative = toward on-time (green left)
+    # For on-time class, negate so the axis direction is always consistent
+    display_vals = s_vals * (-1 if predicted_class == 0 else 1)
+    colors = ["#dc2626" if v > 0 else "#16a34a" for v in display_vals]
 
     fig = go.Figure(go.Bar(
-        x=s_vals,
+        x=display_vals,
         y=f_names,
         orientation="h",
         marker_color=colors,
-        text=[f"{v:+.3f}" for v in s_vals],
+        text=[f"{v:+.3f}" for v in display_vals],
         textposition="auto",
     ))
     fig.update_layout(
@@ -288,13 +292,18 @@ with tab_local:
         else:
             with st.spinner(f"Looking up {ex_flight_num}..."):
                 lk = lookup_flight_explain(ex_flight_num)
+            _ao = sorted(AIRPORT_NAMES.keys())
             if lk:
-                if lk.get("origin"):   st.session_state["ex_origin"]   = lk["origin"]
-                if lk.get("dest"):     st.session_state["ex_dest"]     = lk["dest"]
+                if lk.get("origin") and lk["origin"] in _ao:
+                    st.session_state["ex_origin"]     = lk["origin"]
+                    st.session_state["ex_origin_sel"] = lk["origin"]
+                if lk.get("dest") and lk["dest"] in _ao:
+                    st.session_state["ex_dest"]       = lk["dest"]
+                    st.session_state["ex_dest_sel"]   = lk["dest"]
                 if lk.get("carrier") and lk["carrier"] in AIRLINE_NAMES:
-                                       st.session_state["ex_carrier"]  = lk["carrier"]
+                    st.session_state["ex_carrier"]    = lk["carrier"]
                 if lk.get("dep_hour") is not None:
-                                       st.session_state["ex_dep_hour"] = lk["dep_hour"]
+                    st.session_state["ex_dep_hour"]   = lk["dep_hour"]
                 if lk.get("flight_date"):
                     dt = datetime.strptime(lk["flight_date"], "%Y-%m-%d")
                     st.session_state["ex_month"]     = dt.month
@@ -453,10 +462,7 @@ with tab_local:
                                   font_color=get_theme()["font_color"])
             st.plotly_chart(fig, use_container_width=True)
 
-            st.caption(
-                "🔴 Red bars push toward delay. 🟢 Green bars push toward on-time. "
-                "Longer bar = stronger influence."
-            )
+            st.caption("🔴 Red bars → push toward delay. 🟢 Green bars ← push toward on-time. Longer bar = stronger influence.")
 
             with st.expander("All classes SHAP breakdown"):
                 cols = st.columns(3)

@@ -526,12 +526,18 @@ with tab_manual:
         else:
             with st.spinner(f"Looking up {flight_num_m}..."):
                 lk = lookup_flight(flight_num_m)
+            _ao = sorted(AIRPORT_NAMES.keys())
             if lk:
-                if lk.get("origin"):               st.session_state["mi_origin"]  = lk["origin"]
-                if lk.get("dest"):                 st.session_state["mi_dest"]    = lk["dest"]
+                if lk.get("origin") and lk["origin"] in _ao:
+                    st.session_state["mi_origin"]     = lk["origin"]
+                    st.session_state["mi_origin_sel"] = lk["origin"]
+                if lk.get("dest") and lk["dest"] in _ao:
+                    st.session_state["mi_dest"]       = lk["dest"]
+                    st.session_state["mi_dest_sel"]   = lk["dest"]
                 if lk.get("carrier") and lk["carrier"] in AIRLINE_CODES:
-                                                   st.session_state["mi_carrier"] = lk["carrier"]
-                if lk.get("dep_hour") is not None: st.session_state["mi_hour"]   = lk["dep_hour"]
+                    st.session_state["mi_carrier"]    = lk["carrier"]
+                if lk.get("dep_hour") is not None:
+                    st.session_state["mi_hour"]       = lk["dep_hour"]
                 if lk.get("flight_date"):
                     st.session_state["mi_date"] = datetime.strptime(lk["flight_date"], "%Y-%m-%d").date()
                 st.session_state["_m_lookup_ok"]   = flight_num_m
